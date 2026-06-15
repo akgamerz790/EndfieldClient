@@ -1,0 +1,102 @@
+﻿using System;
+using System.IO;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+using EndfieldClient.AIC.Primitives;
+
+namespace Endfield;
+
+internal class OriginiumClient
+{
+    private static readonly TcpClient OriginiumConnection = new();
+
+    private const string ServerAddress = "enderblade.com";
+    private const int ServerPort = 25565;
+
+    private const int ProtocolVersion = 772;
+
+    public static async Task Main(string[] args)
+    {
+        await OriginiumConnection.ConnectAsync(ServerAddress, ServerPort);
+
+        NetworkStream networkStream = OriginiumConnection.GetStream();
+
+        await SendHandshake(networkStream);
+        await SendLogin(networkStream, "akgamerz_790");
+
+        Console.WriteLine("Handshake and Login packets sent.");
+    }
+
+    private static async Task SendHandshake(NetworkStream networkStream)
+    {
+        using MemoryStream packet = new();
+
+        VarIntWriter.WriteVarInt(packet, 0x00);
+        VarIntWriter.WriteVarInt(packet, ProtocolVersion);
+
+        StringCrystallizer.CrystallizeString(
+            packet,
+            ServerAddress
+        );
+
+        packet.WriteByte((byte)(ServerPort >> 8));
+        packet.WriteByte((byte)ServerPort);
+
+        VarIntWriter.WriteVarInt(packet, 2);
+
+        await SendPacket(networkStream, packet);
+    }
+
+    private static async Task SendLogin(
+        NetworkStream networkStream,
+        string username)
+    {
+        using MemoryStream packet = new();
+
+        VarIntWriter.WriteVarInt(packet, 0x00);
+
+        StringCrystallizer.CrystallizeString(
+            packet,
+            username
+        );
+
+        await SendPacket(networkStream, packet);
+    }
+
+    private static async Task SendPacket(
+        NetworkStream networkStream,
+        MemoryStream packet)
+    {
+        byte[] payload = packet.ToArray();
+
+        VarIntWriter.WriteVarInt(
+            networkStream,
+            payload.Length
+        );
+
+        await networkStream.WriteAsync(payload);
+    }
+}
+
+
+
+
+//Handshake._Crystallize(_NetworkStream)
+        //MemoryStream packet = new MemoryStream();
+
+        //VarIntWriter.WriteVarInt(packet, 0x00); // Handshake ID
+        //VarIntWriter.WriteVarInt(packet, 772);  // Protocol Version
+
+        //StringCrystallizer.CrystallizeString(packet, _ServerAddress);
+
+        //packet.WriteByte((byte)(_ServerPort >> 8));
+        //packet.WriteByte((byte)_ServerPort);
+
+        //VarIntWriter.WriteVarInt(packet, 2); // LOGIN
+
+        //byte[] payload = packet.ToArray();
+
+        //VarIntWriter.WriteVarInt(_NetworkStream, payload.Length);
+
+        //await _NetworkStream.WriteAsync(payload);
